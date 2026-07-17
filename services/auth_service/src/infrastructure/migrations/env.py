@@ -11,6 +11,7 @@ from alembic import context
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
 from src.infrastructure.session import Base
+from src.infrastructure.model.user import User #noqa
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
