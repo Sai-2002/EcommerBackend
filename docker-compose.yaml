@@ -1,14 +1,165 @@
 services:
-  postgres:
-    image: postgres
-    environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
+
+  # ── API Gateway ───────────────────────────────────────────────────────────────
+  gateway:
+    profiles: ["gateway"]
+    build:
+      context: .
+      dockerfile: services/api_gateway/DOCKERFILE
     ports:
-      - "5432:5432"
+      - "8000:8000"
+    environment:
+      AUTH_SERVICE_URL: http://auth:8000
+      PRODUCT_SERVICE_URL: http://product:8000
+      ORDER_SERVICE_URL: http://order:8000
+      CART_SERVICE_URL: http://cart:8000
+      PAYMENT_SERVICE_URL: http://payment:8000
+      JWT_SECRET: ${JWT_SECRET}
+
+  # ── Auth Service ──────────────────────────────────────────────────────────────
+  auth_db:
+    profiles: ["auth"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./infr/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - auth_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d auth_db"]
+      interval: 5s
+      retries: 5
+
+  auth:
+    profiles: ["auth"]
+    build:
+      context: .
+      dockerfile: services/auth_service/DOCKERFILE
+    ports:
+      - "8001:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@auth_db:5432/auth_db
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      auth_db:
+        condition: service_healthy
+
+  # ── Product Service ───────────────────────────────────────────────────────────
+  product_db:
+    profiles: ["product"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - product_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d product_db"]
+      interval: 5s
+      retries: 5
+
+  product:
+    profiles: ["product"]
+    build:
+      context: .
+      dockerfile: services/product_service/DOCKERFILE
+    ports:
+      - "8002:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@product_db:5432/product_db
+    depends_on:
+      product_db:
+        condition: service_healthy
+
+  # ── Order Service ─────────────────────────────────────────────────────────────
+  order_db:
+    profiles: ["order"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d order_db"]
+      interval: 5s
+      retries: 5
+
+  order:
+    profiles: ["order"]
+    build:
+      context: .
+      dockerfile: services/order_service/DOCKERFILE
+    ports:
+      - "8003:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@order_db:5432/order_db
+    depends_on:
+      order_db:
+        condition: service_healthy
+
+  # ── Cart Service ──────────────────────────────────────────────────────────────
+  cart_db:
+    profiles: ["cart"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cart_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - cart_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d cart_db"]
+      interval: 5s
+      retries: 5
+
+  cart:
+    profiles: ["cart"]
+    build:
+      context: .
+      dockerfile: services/cart_service/DOCKERFILE
+    ports:
+      - "8004:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@cart_db:5432/cart_db
+    depends_on:
+      cart_db:
+        condition: service_healthy
+
+  # ── Payment Service ───────────────────────────────────────────────────────────
+  payment_db:
+    profiles: ["payment"]
+    image: postgres:16
+    environment:
+      POSTGRES_DB: payment_db
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d payment_db"]
+      interval: 5s
+      retries: 5
+
+  payment:
+    profiles: ["payment"]
+    build:
+      context: .
+      dockerfile: services/payment_service/DOCKERFILE
+    ports:
+      - "8005:8000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@payment_db:5432/payment_db
+    depends_on:
+      payment_db:
+        condition: service_healthy
 
 volumes:
-  postgres_data:
+  auth_db_data:
+  product_db_data:
+  order_db_data:
+  cart_db_data:
+  payment_db_data:

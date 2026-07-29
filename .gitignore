@@ -1,0 +1,16 @@
+# secrets — never commit these
+.env
+services/**/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+
+# pytest
+.pytest_cache/
+
+# uv
+uv.lock

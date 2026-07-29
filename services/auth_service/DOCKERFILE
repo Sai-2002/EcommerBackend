@@ -1,0 +1,30 @@
+# ── Stage 1: dependency layer ────────────────────────────────────────────────
+FROM python:3.11-slim AS deps
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir uv
+
+COPY pyproject.toml uv.lock ./
+
+# uv creates a virtualenv at /app/.venv by default
+RUN uv sync --frozen --no-dev
+
+
+# ── Stage 2: runtime image ───────────────────────────────────────────────────
+FROM python:3.11-slim AS runtime
+
+WORKDIR /app
+
+# Copy the virtualenv (not system paths) from the deps stage
+COPY --from=deps /app/.venv /app/.venv
+
+# Put the venv's bin/ first in PATH so alembic, uvicorn etc. are found
+ENV PATH="/app/.venv/bin:$PATH"
+
+COPY services/auth_service/ .
+
+EXPOSE 8000
+
+CMD alembic upgrade head && \
+    uvicorn app:app --host 0.0.0.0 --port 8000
